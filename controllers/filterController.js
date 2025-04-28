@@ -1,8 +1,7 @@
 import db from '../config/db.js';
 
 export const filterAndFindNearbyPlaces = async (req, res) => {
-    const { cuisine, lat, lon, radius = 2, rating, wait_time } = req.query;
-
+    const { cuisine, rating, wait_time, lat, lon, radius = 2 } = req.query;
 
     if (!lat || !lon) {
         return res.status(400).json({ message: 'Пожалуйста, передайте параметры lat и lon' });
@@ -13,73 +12,64 @@ export const filterAndFindNearbyPlaces = async (req, res) => {
         return res.status(400).json({ message: 'Неверный радиус' });
     }
 
-    let query = 'SELECT * FROM places WHERE 1=1';
-    const params = [];
-
-
-    if (cuisine) {
-        params.push(`%${cuisine}%`);
-        query += ` AND cuisine ILIKE $${params.length}`;
-    }
-
-
-    if (rating) {
-        params.push(rating);
-        query += ` AND rating >= $${params.length}`;
-    }
-
-
-    if (wait_time) {
-        params.push(wait_time);
-        query += ` AND wait_time <= $${params.length}`;
-    }
-
     try {
-        console.log('Query:', query);
-        console.log('Params:', params);
+        const queryParts = [];
+        const params = [lat, lon, radiusInKm];
+        let paramIndex = 4;
 
-        const result = await db.query(query, params);
-        const filteredPlaces = result.rows;
-
-        if (filteredPlaces.length === 0) {
-            return res.status(404).json({ message: 'Ничего не найдено по фильтрам' });
+        if (cuisine) {
+            queryParts.push(`cuisine ILIKE $${paramIndex}`);
+            params.push(`%${cuisine}%`);
+            paramIndex++;
         }
 
-        const ids = filteredPlaces.map((place, index) => `$${index + 1}`).join(', ');
-        console.log('Ids:', ids);
+        if (rating) {
+            queryParts.push(`rating >= $${paramIndex}`);
+            params.push(rating);
+            paramIndex++;
+        }
+
+        if (wait_time) {
+            queryParts.push(`wait_time <= $${paramIndex}`);
+            params.push(wait_time);
+            paramIndex++;
+        }
+
+        const whereClause = queryParts.length > 0 ? `AND ${queryParts.join(' AND ')}` : '';
 
         const nearbyQuery = `
             SELECT id, name, address, cuisine, price_range, wait_time, rating, avg_price_range, seats, wifi, music,
                    kids_friendly, parking, working_hours, image_url, latitude, longitude,
                    ST_Distance(
-                           ST_SetSRID(ST_MakePoint($${params.length + 1}, $${params.length + 2}), 4326),
-                           ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+                       ST_SetSRID(ST_MakePoint($1, $2), 4326),
+                       ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
                    ) / 1000 AS distance_km
             FROM places
             WHERE ST_Distance(
-                          ST_SetSRID(ST_MakePoint($${params.length + 1}, $${params.length + 2}), 4326),
-                          ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
-                  ) <= $${params.length + 3} * 1000
-              AND id IN (${ids})
+                      ST_SetSRID(ST_MakePoint($1, $2), 4326),
+                      ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+                  ) <= $3 * 1000
+              ${whereClause}
+            ORDER BY distance_km ASC
         `;
 
         console.log('Nearby Query:', nearbyQuery);
+        console.log('Params:', params);
 
-        const nearbyResult = await db.query(nearbyQuery, [...params, lat, lon, radiusInKm]);
-        const nearbyPlaces = nearbyResult.rows;
+        const result = await db.query(nearbyQuery, params);
+        const places = result.rows;
 
-        if (nearbyPlaces.length === 0) {
-            return res.status(404).json({ message: 'Ничего не найдено в этом радиусе' });
+        if (places.length === 0) {
+            return res.status(404).json({ message: 'Ничего не найдено по заданным параметрам' });
         }
 
-        nearbyPlaces.sort((a, b) => a.distance_km - b.distance_km);
-
-        return res.json(nearbyPlaces);
+        return res.json(places);
     } catch (error) {
         console.error('Ошибка при поиске данных:', error);
         return res.status(500).json({ message: error.message || 'Ошибка сервера', error: error.stack });
     }
 };
+
 
 
 
