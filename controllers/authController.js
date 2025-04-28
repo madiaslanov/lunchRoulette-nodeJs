@@ -4,27 +4,24 @@ import jwt from 'jsonwebtoken';
 
 export const registerController = async (req, res) => {
     try {
-        // Получаем данные из тела запроса
         const { username, email, password, phone, address, profile } = req.body;
 
-        // Логируем полученные данные, чтобы убедиться, что они приходят правильно
         console.log('Received data:', req.body);
 
-        // Проверяем обязательные поля
         if (!username || !email || !password) {
             console.log('Missing required fields');
             return res.status(400).json({ error: "Username, email, and password are required" });
         }
 
-        // Проверяем, существует ли уже пользователь с таким email
+
         const { data: existingUser, error: existingUserError } = await supabase
             .from('users')
-            .select('id')  // Выбираем только id, чтобы проверить, есть ли такой email
-            .eq('email', email) // Сравниваем по email
-            .maybeSingle(); // Возвращаем только один результат
+            .select('id')
+            .eq('email', email)
+            .maybeSingle();
 
-        console.log("Existing user:", existingUser);  // Логируем существующего пользователя
-        console.log("Existing user error:", existingUserError);  // Логируем ошибку при проверке существующего пользователя
+        console.log("Existing user:", existingUser);
+        console.log("Existing user error:", existingUserError);
 
         if (existingUserError) {
             console.error("Error checking if user exists:", existingUserError);
@@ -35,10 +32,8 @@ export const registerController = async (req, res) => {
             return res.status(400).json({ error: "User with this email already exists" });
         }
 
-        // Хешируем пароль с помощью bcrypt
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Вставка нового пользователя в таблицу
         const { data, error } = await supabase
             .from('users')
             .insert([
@@ -46,17 +41,14 @@ export const registerController = async (req, res) => {
             ])
             .select();
 
-        // Логируем данные после вставки
         console.log("Inserted data:", data);
         console.log("Insert error:", error);
 
-        // Обработка ошибок при вставке
         if (error) {
             console.error("Insert error:", error);
             return res.status(500).json({ error: "Failed to register user" });
         }
 
-        // Ответ после успешной регистрации
         if (!data || data.length === 0) {
             return res.status(500).json({ error: "Insert did not return user data" });
         }
@@ -81,12 +73,11 @@ export const loginController = async (req, res) => {
             return res.status(400).json({ error: "Email and password are required" });
         }
 
-        // Ищем пользователя по email
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
             .eq('email', email)
-            .single(); // Возвращаем только одного пользователя
+            .single();
 
         if (error) {
             console.error('Supabase error:', error);
@@ -97,21 +88,18 @@ export const loginController = async (req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
 
-        // Извлекаем хешированный пароль из базы данных и сравниваем его с введенным пользователем
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
             return res.status(401).json({ error: "Invalid password" });
         }
 
-        // Создаем JWT
         const token = jwt.sign(
-            { userId: user.id },   // Payload (данные, которые будут храниться в токене)
-            process.env.JWT_SECRET, // Секретный ключ для подписи токена
-            { expiresIn: '1h' }    // Время жизни токена (например, 1 час)
+            { userId: user.id },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
         );
 
-        // Отправляем токен в ответе
         res.status(200).json({
             message: "Login successful",
             user: {
@@ -119,7 +107,7 @@ export const loginController = async (req, res) => {
                 username: user.username,
                 email: user.email,
             },
-            token,  // Возвращаем токен клиенту
+            token,
         });
     } catch (err) {
         console.error('Login error:', err);
@@ -129,7 +117,7 @@ export const loginController = async (req, res) => {
 
 export const deleteController = async (req, res) => {
     try {
-        const { userId } = req.params;  // Получаем userId из параметров URL
+        const { userId } = req.params;
 
         console.log('Attempting to delete user with ID:', userId);
 
@@ -137,23 +125,20 @@ export const deleteController = async (req, res) => {
             return res.status(400).json({ error: "User ID is required" });
         }
 
-        // Удаление пользователя
         const { data, error } = await supabase
             .from('users')
             .delete()
-            .eq('id', parseInt(userId));  // Преобразуем userId в целое число
+            .eq('id', parseInt(userId));
 
         if (error) {
             console.error('Error deleting user:', error);
             return res.status(500).json({ error: 'Failed to delete user' });
         }
 
-        // Проверяем, был ли удален пользователь
         if (!data || data.length === 0) {
             return res.status(404).json({ error: 'User not found or already deleted' });
         }
 
-        // Успешное удаление
         res.status(200).json({ message: 'User deleted successfully' });
     } catch (err) {
         console.error('Error:', err);

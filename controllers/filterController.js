@@ -1,7 +1,7 @@
 import db from '../config/db.js';
 
 export const filterAndFindNearbyPlaces = async (req, res) => {
-    const { cuisine, rating, wait_time, lat, lon, radius = 2 } = req.query;
+    const { cuisine, lat, lon, radius = 2 } = req.query;
 
     if (!lat || !lon) {
         return res.status(400).json({ message: 'Пожалуйста, передайте параметры lat и lon' });
@@ -21,40 +21,33 @@ export const filterAndFindNearbyPlaces = async (req, res) => {
         query += ` AND cuisine ILIKE $${params.length}`;
     }
 
-    if (rating) {
-        params.push(Number(rating));
-        query += ` AND rating >= $${params.length}`;
-    }
-
-    if (wait_time) {
-        params.push(Number(wait_time));
-        query += ` AND wait_time <= $${params.length}`;
-    }
-
     try {
-        // Запрос фильтрованных данных
+
         const result = await db.query(query, params);
         const filteredPlaces = result.rows;
 
-        // Если после фильтрации данных нет
         if (filteredPlaces.length === 0) {
             return res.status(404).json({ message: 'Ничего не найдено по фильтрам' });
         }
 
-        const nearbyResult = await db.query(`
+        const ids = filteredPlaces.map((place, index) => `$${index + 1}`).join(', ');
+
+        const nearbyQuery = `
             SELECT id, name, address, cuisine, price_range, wait_time, rating, avg_price_range, seats, wifi, music,
                    kids_friendly, parking, working_hours, image_url, latitude, longitude,
                    ST_Distance(
-                           ST_SetSRID(ST_MakePoint($2, $1), 4326),
+                           ST_SetSRID(ST_MakePoint($${params.length + 1}, $${params.length + 2}), 4326),
                            ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
                    ) / 1000 AS distance_km
             FROM places
             WHERE ST_Distance(
-                          ST_SetSRID(ST_MakePoint($2, $1), 4326),
+                          ST_SetSRID(ST_MakePoint($${params.length + 1}, $${params.length + 2}), 4326),
                           ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
-                  ) <= $3 * 1000  -- Применение радиуса
-              AND id IN (${filteredPlaces.map((place, index) => `$${index + params.length + 1}`).join(', ')})
-        `, [lat, lon, radiusInKm, ...filteredPlaces.map(place => place.id)]);
+                  ) <= $${params.length + 3} * 1000
+              AND id IN (${ids})
+        `;
+
+        const nearbyResult = await db.query(nearbyQuery, [...params, lat, lon, radiusInKm]);
 
         const nearbyPlaces = nearbyResult.rows;
 
@@ -64,13 +57,14 @@ export const filterAndFindNearbyPlaces = async (req, res) => {
 
         nearbyPlaces.sort((a, b) => a.distance_km - b.distance_km);
 
-        // Возвращаем успешный ответ с результатами
         return res.json(nearbyPlaces);
     } catch (error) {
         console.error('Ошибка при поиске данных:', error);
         return res.status(500).json({ message: 'Ошибка сервера' });
     }
 };
+
+
 
 
 
@@ -152,7 +146,6 @@ export const findNearbyPlaces = async (req, res) => {
 
     const radiusInKm = Number(radius);
 
-    // Проверка правильности радиуса
     if (isNaN(radiusInKm) || radiusInKm <= 0) {
         return res.status(400).json({ message: 'Неверный радиус' });
     }
@@ -173,14 +166,12 @@ export const findNearbyPlaces = async (req, res) => {
 
         const data = result.rows;
 
-        // Если данных не найдено в заданном радиусе
         if (data.length === 0) {
             return res.status(404).json({ message: 'Ничего не найдено в этом радиусе' });
         }
 
         data.sort((a, b) => a.distance_km - b.distance_km);
 
-        // Успешный ответ с данными
         return res.json(data);
     } catch (error) {
         console.error('Ошибка при поиске ближайших мест:', error);

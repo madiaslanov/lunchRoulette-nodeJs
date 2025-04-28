@@ -1,7 +1,6 @@
 import OpenAI from "openai";
 import dotenv from "dotenv";
 dotenv.config();
-// const gpt = new OpenAI({apiKey : process.env.});
 
 
 const response = await gpt.responses.create({
@@ -27,7 +26,7 @@ app.post( async (req, res) => {
 
     try {
         const response = await openai.chat.completions.create({
-            model: "gpt-4", // или "gpt-3.5-turbo", если нет доступа к 4 версии
+            model: "gpt-4",
             messages: [{ role: "user", content: prompt }],
         });
 

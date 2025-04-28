@@ -17,7 +17,6 @@ export const createRestaurant = async (req, res) => {
     }
 };
 
-// READ: Получение всех ресторанов
 export const getRestaurants = async (req, res) => {
     try {
         const result = await db.query('SELECT * FROM places');
@@ -28,7 +27,6 @@ export const getRestaurants = async (req, res) => {
     }
 };
 
-// READ: Получение одного ресторана по id
 export const getRestaurantById = async (req, res) => {
     const { id } = req.params;
 
@@ -44,7 +42,6 @@ export const getRestaurantById = async (req, res) => {
     }
 };
 
-// UPDATE: Обновление данных ресторана
 export const updateRestaurant = async (req, res) => {
     const { id } = req.params;
     const { name, rating, address, cuisine, price_range, wait_time, avg_price_range, seats, wifi, music, kids_friendly, parking, working_hours, latitude, longitude } = req.body;
@@ -69,7 +66,6 @@ export const updateRestaurant = async (req, res) => {
     }
 };
 
-// DELETE: Удаление ресторана
 export const deleteRestaurant = async (req, res) => {
     const { id } = req.params;
 

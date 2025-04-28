@@ -18,12 +18,10 @@ export const createPlace = async (req, res) => {
             working_hours
         } = req.body;
 
-        // Проверка обязательных полей
         if (!name || !cuisine || !price_range) {
             return res.status(400).json({ error: 'Required fields: name, cuisine, price_range' });
         }
 
-        // Вставка данных
         const { data, error } = await supabase
             .from('places')
             .insert([
@@ -65,7 +63,6 @@ export const getPlaces = async (req, res) => {
 
         let query = supabase.from('places').select('*');
 
-        // Применение фильтров, если они переданы
         if (price_range) {
             query = query.eq('price_range', price_range);
         }
