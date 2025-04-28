@@ -4,7 +4,7 @@ import {
     getRestaurantById,
     getRestaurants,
     updateRestaurant
-} from "../controllers/restaurantController.js";
+} from "../controllers/CRUDController.js";
 
 
 

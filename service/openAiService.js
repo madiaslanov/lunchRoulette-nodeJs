@@ -33,7 +33,7 @@ app.post( async (req, res) => {
         const reply = response.choices[0]?.message?.content || "No response";
 
         res.status(200).json({ reply });
-    } catch (error: any) {
+    } catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message || "Something went wrong" });
     }

@@ -1,14 +1,14 @@
 import db from '../config/db.js';
 
 export const filterAndFindNearbyPlaces = async (req, res) => {
-    const { cuisine, lat, lon, radius = 2 } = req.query;
+    const { cuisine, lat, lon, radius = 2, rating, wait_time } = req.query;
+
 
     if (!lat || !lon) {
         return res.status(400).json({ message: 'Пожалуйста, передайте параметры lat и lon' });
     }
 
     const radiusInKm = Number(radius);
-
     if (isNaN(radiusInKm) || radiusInKm <= 0) {
         return res.status(400).json({ message: 'Неверный радиус' });
     }
@@ -16,12 +16,27 @@ export const filterAndFindNearbyPlaces = async (req, res) => {
     let query = 'SELECT * FROM places WHERE 1=1';
     const params = [];
 
+
     if (cuisine) {
         params.push(`%${cuisine}%`);
         query += ` AND cuisine ILIKE $${params.length}`;
     }
 
+
+    if (rating) {
+        params.push(rating);
+        query += ` AND rating >= $${params.length}`;
+    }
+
+
+    if (wait_time) {
+        params.push(wait_time);
+        query += ` AND wait_time <= $${params.length}`;
+    }
+
     try {
+        console.log('Query:', query);
+        console.log('Params:', params);
 
         const result = await db.query(query, params);
         const filteredPlaces = result.rows;
@@ -31,6 +46,7 @@ export const filterAndFindNearbyPlaces = async (req, res) => {
         }
 
         const ids = filteredPlaces.map((place, index) => `$${index + 1}`).join(', ');
+        console.log('Ids:', ids);
 
         const nearbyQuery = `
             SELECT id, name, address, cuisine, price_range, wait_time, rating, avg_price_range, seats, wifi, music,
@@ -47,8 +63,9 @@ export const filterAndFindNearbyPlaces = async (req, res) => {
               AND id IN (${ids})
         `;
 
-        const nearbyResult = await db.query(nearbyQuery, [...params, lat, lon, radiusInKm]);
+        console.log('Nearby Query:', nearbyQuery);
 
+        const nearbyResult = await db.query(nearbyQuery, [...params, lat, lon, radiusInKm]);
         const nearbyPlaces = nearbyResult.rows;
 
         if (nearbyPlaces.length === 0) {
@@ -60,7 +77,7 @@ export const filterAndFindNearbyPlaces = async (req, res) => {
         return res.json(nearbyPlaces);
     } catch (error) {
         console.error('Ошибка при поиске данных:', error);
-        return res.status(500).json({ message: 'Ошибка сервера' });
+        return res.status(500).json({ message: error.message || 'Ошибка сервера', error: error.stack });
     }
 };
 
