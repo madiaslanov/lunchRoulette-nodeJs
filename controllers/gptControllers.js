@@ -1,12 +1,8 @@
-import OpenAI from "openai";
 import dotenv from "dotenv";
+import fetch from "node-fetch"; // Если у тебя Node.js v18+, fetch встроен, тогда импорт не нужен
 import client from "../config/db.js";
 
 dotenv.config();
-
-const openai = new OpenAI({
-    apiKey: process.env.GPT_KEY,
-});
 
 export const gptResponse = async (req, res) => {
     const { prompt } = req.body;
@@ -47,24 +43,41 @@ export const gptResponse = async (req, res) => {
             .join("\n");
 
         const fullPrompt = `
-    Пользователь интересуется, где можно поесть в пределах ${budget}₸. 
-    Вот рестораны, которые мы нашли в базе данных:
+Пользователь интересуется, где можно поесть в пределах ${budget}₸. 
+Вот рестораны, которые мы нашли в базе данных:
 
-    ${placeList}
+${placeList}
 
-    На основе этого списка порекомендуй 1-2 ресторана в дружелюбной и понятной форме.
-    Не выдумывай свои варианты, используй только предложенные рестораны.
-    `;
+На основе этого списка порекомендуй 1-2 ресторана в дружелюбной и понятной форме.
+Не выдумывай свои варианты, используй только предложенные рестораны.
+`;
 
-        const response = await openai.chat.completions.create({
-            model: "gpt-4",
-            messages: [{ role: "user", content: fullPrompt }],
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: "deepseek/deepseek-prover-v2:free",
+                messages: [
+                    {
+                        role: "user",
+                        content: fullPrompt,
+                    },
+                ],
+            }),
         });
 
-        const reply = response.choices[0]?.message?.content || "No response";
+        if (!response.ok) {
+            const errorBody = await response.text();
+            throw new Error(`OpenRouter API error: ${response.status} - ${errorBody}`);
+        }
+
+        const data = await response.json();
+        const reply = data.choices?.[0]?.message?.content || "No response";
 
         return res.status(200).json({ reply });
-
     } catch (error) {
         console.error(error);
         return res.status(500).json({ error: error.message || "Something went wrong" });
