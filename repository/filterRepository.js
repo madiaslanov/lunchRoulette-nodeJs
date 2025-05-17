@@ -46,3 +46,23 @@ export const getNearbySimple = (lat, lon, radiusInKm) => {
     `;
     return db.query(query, [lat, lon, radiusInKm]);
 };
+
+
+export const fetchPlaces = async ({ price_range, cuisine, max_wait_time }) => {
+    let query = db.from("places").select("*");
+
+    if (price_range) {
+        query = query.eq("price_range", price_range);
+    }
+
+    if (cuisine) {
+        query = query.ilike("cuisine", `%${cuisine}%`);
+    }
+
+    if (max_wait_time) {
+        query = query.lte("wait_time", parseInt(max_wait_time));
+    }
+
+    const { data, error } = await query;
+    return { data, error };
+};

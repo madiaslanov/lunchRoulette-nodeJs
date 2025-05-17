@@ -51,3 +51,9 @@ export const findNearbySimple = async (lat, lon, radiusInKm) => {
     const result = await repo.getNearbySimple(lat, lon, radiusInKm);
     return result.rows;
 };
+
+export const getFilteredPlaces = async (filters) => {
+    const { data, error } = await fetchPlaces(filters);
+    if (error) throw new Error("Ошибка при получении данных из базы");
+    return data;
+};

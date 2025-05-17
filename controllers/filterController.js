@@ -1,4 +1,5 @@
 import * as service from '../service/filterService.js';
+import {getFilteredPlaces} from "../service/filterService.js";
 
 export const filterAndFindNearbyPlaces = async (req, res) => {
     const { lat, lon, radius = 2 } = req.query;
@@ -70,5 +71,18 @@ export const findNearbyPlaces = async (req, res) => {
         res.json(data);
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+export const getPlaces = async (req, res) => {
+    try {
+        const { price_range, cuisine, max_wait_time } = req.query;
+        const filters = { price_range, cuisine, max_wait_time };
+
+        const places = await getFilteredPlaces(filters);
+        res.status(200).json({ places });
+    } catch (err) {
+        console.error("Get places error:", err);
+        res.status(500).json({ error: err.message || "Server error while fetching places" });
     }
 };

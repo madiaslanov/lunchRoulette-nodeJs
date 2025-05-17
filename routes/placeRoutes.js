@@ -1,8 +1,8 @@
 import express from 'express';
 import {
     filterAndFindNearbyPlaces,
-     findNearbyPlaces,
-    getPlaceById,
+    findNearbyPlaces,
+    getPlaceById, getPlaces,
     getPlacesByRating,
     searchPlaceByName
 } from "../controllers/filterController.js";
@@ -27,6 +27,8 @@ router.get('/restaurant/:id', getPlaceById);
 
 // nearestPlaces | GET
 router.get('/places/nearby', findNearbyPlaces);
+
+router.get('/places', getPlaces);
 
 
 export default router;
