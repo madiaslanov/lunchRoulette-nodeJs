@@ -1,5 +1,4 @@
 import express from 'express';
-import {createPlace, getPlaces} from '../controllers/placeController.js';
 import {
     filterAndFindNearbyPlaces,
      findNearbyPlaces,
@@ -9,12 +8,6 @@ import {
 } from "../controllers/filterController.js";
 
 const router = express.Router();
-// places | POST
-router.post('/places', createPlace);
-
-// places | GET
-
-router.get('/places', getPlaces);
 
 // filter | GET
 
