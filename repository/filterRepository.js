@@ -1,4 +1,5 @@
 import db from '../config/db.js';
+import supabase from "../config/supabaseClient.js";
 
 export const getNearbyPlaces = async (params, whereClause, lat, lon, radiusInKm) => {
     const query = `
@@ -49,7 +50,7 @@ export const getNearbySimple = (lat, lon, radiusInKm) => {
 
 
 export const fetchPlaces = async ({ price_range, cuisine, max_wait_time }) => {
-    let query = db.from("places").select("*");
+    let query = supabase.from("places").select("*");
 
     if (price_range) {
         query = query.eq("price_range", price_range);
@@ -64,5 +65,10 @@ export const fetchPlaces = async ({ price_range, cuisine, max_wait_time }) => {
     }
 
     const { data, error } = await query;
+
+    if (error) {
+        console.error('Ошибка запроса к Supabase:', error);
+    }
+
     return { data, error };
 };
