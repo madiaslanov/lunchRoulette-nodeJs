@@ -1,4 +1,5 @@
 import * as repo from '../repository/filterRepository.js';
+import {fetchPlaces} from "../repository/filterRepository.js";
 
 export const filterAndFindNearby = async (query) => {
     const { cuisine, rating, wait_time, lat, lon, radius = 2 } = query;
